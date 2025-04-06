@@ -14,6 +14,9 @@ response_dict = dict(zip(response_df["id"], response_df["response"]))
 def process_input(text):
     text = text.strip()
 
+    if len(text) < 3:
+        return "もう少し詳しく教えてくれない？"
+
     if "怒" in text:
         return {"target": "怒った", "subject": "彼", "object": "不明", "intent": "陳述", "tense": "過去"}
     elif "泣" in text:
