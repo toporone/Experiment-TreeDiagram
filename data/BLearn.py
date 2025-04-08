@@ -1,10 +1,15 @@
 import pandas as pd
 import numpy as np
+import csv
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+
+with open("blearn_log1.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["epoch", "loss", "test_accuracy"])
 
 # GPU対応
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -66,7 +71,7 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # 学習ループ
-for epoch in range(2500):
+for epoch in range(6000):
     model.train()
     optimizer.zero_grad()
     outputs = model(X_train)
@@ -75,6 +80,17 @@ for epoch in range(2500):
     optimizer.step()
     if epoch % 10 == 0:
         print(f"Epoch {epoch}: Loss = {loss.item():.4f}")
+        # 評価
+    model.eval()
+    with torch.no_grad():
+        preds = model(X_test).argmax(dim=1)
+        acc = (preds == y_test).float().mean().item()  # floatへ変換
+
+    # CSVに記録
+    with open("blearn_log1.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([epoch, loss.item(), acc])
+
 
 # 評価
 model.eval()

@@ -1,3 +1,4 @@
+import csv
 import pandas as pd
 import numpy as np
 import torch
@@ -6,11 +7,17 @@ import torch.optim as optim
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 
+
+with open("alearn1_log.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["epoch", "loss", "test_accuracy"])
+
+
 # GPU対応
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # CSV読み込み
-df = pd.read_csv("ALearn2.csv")
+df = pd.read_csv("ALearn1.csv")
 
 # 特徴量とラベル（+ 強度）
 base_cols = ["target", "subject", "object", "intent", "tense"]
@@ -74,6 +81,16 @@ for epoch in range(1000):
     optimizer.step()
     if epoch % 10 == 0:
         print(f"Epoch {epoch}: Loss = {loss.item():.4f}")
+
+    model.eval()
+    with torch.no_grad():
+        preds = model(X_test).argmax(dim=1)
+        acc = (preds == y_test).float().mean().item() 
+
+    # CSVに記録
+    with open("alearn_log1.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([epoch, loss.item(), acc])
 
 # 評価
 model.eval()
