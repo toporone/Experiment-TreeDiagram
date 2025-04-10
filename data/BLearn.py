@@ -6,16 +6,24 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.metrics.pairwise import cosine_similarity
 
-with open("blearn_log1.csv", "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(["epoch", "loss", "test_accuracy"])
+
+def evaluate_with_numeric_distance(pred_ids, true_ids, max_id):
+    total_score = 0.0
+    for pred, true in zip(pred_ids, true_ids):
+        dist = abs(int(pred) - int(true))
+        score = 1 - (dist / max_id)  # 距離が遠いほど低スコア
+        score = max(score, 0.0)
+        total_score += score
+    return total_score / len(pred_ids)
+
 
 # GPU対応
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # CSV読み込み
-df = pd.read_csv("BLearn1.csv")
+df = pd.read_csv("BLearn2.csv")
 
 # 特徴量とラベル（+ 強度 + 新特徴）
 base_cols = ["target", "subject", "object", "intent", "tense"]
@@ -71,7 +79,7 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # 学習ループ
-for epoch in range(6000):
+for epoch in range(50000):
     model.train()
     optimizer.zero_grad()
     outputs = model(X_train)
@@ -80,16 +88,20 @@ for epoch in range(6000):
     optimizer.step()
     if epoch % 10 == 0:
         print(f"Epoch {epoch}: Loss = {loss.item():.4f}")
-        # 評価
+    # 評価
     model.eval()
     with torch.no_grad():
-        preds = model(X_test).argmax(dim=1)
-        acc = (preds == y_test).float().mean().item()  # floatへ変換
+        preds = model(X_test).argmax(dim=1).cpu().numpy()
+        true_ids = y_test.cpu().numpy()
+        acc = (preds == true_ids).mean()
 
-    # CSVに記録
-    with open("blearn_log1.csv", "a", newline="") as f:
+    # CSV書き込み（appendモードだけ！）
+    with open("blearn2_50klog.csv", "a", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow([epoch, loss.item(), acc])
+        for pred, true in zip(preds, true_ids):
+            writer.writerow([epoch, loss.item(), acc, pred, true])
+
+
 
 
 # 評価

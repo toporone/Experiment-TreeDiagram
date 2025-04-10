@@ -6,18 +6,33 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.metrics.pairwise import cosine_similarity
+
+
+def load_similarity_matrix(filepath):
+    return pd.read_csv(filepath, index_col=0)
+
+def evaluate_with_similarity(pred_ids, true_ids, similarity_matrix):
+    total_score = 0.0
+    for pred, true in zip(pred_ids, true_ids):
+        if str(pred) in similarity_matrix.columns and str(true) in similarity_matrix.index:
+            score = similarity_matrix.loc[str(true), str(pred)]
+        else:
+            score = 0.0
+        total_score += score
+    return total_score / len(pred_ids)
 
 
 with open("alearn1_log.csv", "w", newline="") as f:
     writer = csv.writer(f)
-    writer.writerow(["epoch", "loss", "test_accuracy"])
+    writer.writerow(["epoch", "loss", "test_accuracy","pred_id","true_id"])
 
 
 # GPU対応
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # CSV読み込み
-df = pd.read_csv("ALearn1.csv")
+df = pd.read_csv("ALearn2.csv")
 
 # 特徴量とラベル（+ 強度）
 base_cols = ["target", "subject", "object", "intent", "tense"]
@@ -72,7 +87,7 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # 学習ループ
-for epoch in range(1000):
+for epoch in range(50000):
     model.train()
     optimizer.zero_grad()
     outputs = model(X_train)
@@ -87,22 +102,25 @@ for epoch in range(1000):
         preds = model(X_test).argmax(dim=1)
         acc = (preds == y_test).float().mean().item() 
 
-    # CSVに記録
-    with open("alearn_log1.csv", "a", newline="") as f:
+    # 評価
+    model.eval()
+    with torch.no_grad():
+        preds = model(X_test).argmax(dim=1).cpu().numpy()
+        true_ids = y_test.cpu().numpy()
+        acc = (preds == true_ids).mean()
+
+    # CSV書き込み（appendモードだけ！）
+    with open("alearn2_50klog.csv", "a", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow([epoch, loss.item(), acc])
+        for pred, true in zip(preds, true_ids):
+            writer.writerow([epoch, loss.item(), acc, pred, true])
 
-# 評価
-model.eval()
-with torch.no_grad():
-    preds = model(X_test).argmax(dim=1)
-    acc = (preds == y_test).float().mean()
-    print(f"\nTest Accuracy: {acc:.2f}")
 
-    # 可視化用：1件だけ表示
+    # 可視化用：1件だけ表示"""
+    """""
     sample_idx = 0
     input_features = X_test[sample_idx].cpu().numpy()
     pred_label = label_encoder.inverse_transform([preds[sample_idx].cpu().item()])[0]
     true_label = label_encoder.inverse_transform([y_test[sample_idx].cpu().item()])[0]
     print(f"\n入力ベクトル: {input_features}")
-    print(f"予測ID: {pred_label} / 正解ID: {true_label}")
+    print(f"予測ID: {pred_label} / 正解ID: {true_label}")"""""
