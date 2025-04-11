@@ -73,7 +73,7 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # 学習ループ
-for epoch in range(8100):
+for epoch in range(12805):
     model.train()
     optimizer.zero_grad()
     output = model(X_train)
