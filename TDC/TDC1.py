@@ -8,10 +8,8 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 import joblib
 
-# デバイス設定
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# データ読み込み
 df = pd.read_csv("../data/BLearn2.csv").fillna("不明")
 
 # 特徴カラムとラベル
@@ -26,7 +24,7 @@ encoders = {col: LabelEncoder() for col in base_cols + extra_cols}
 for col in base_cols + extra_cols:
     df[col] = encoders[col].fit_transform(df[col].astype(str))
 
-# 強度はfloatに
+# 精度が足りずdouble
 df[strength_cols] = df[strength_cols].astype(float)
 
 # 最終特徴ベクトル
