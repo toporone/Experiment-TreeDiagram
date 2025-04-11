@@ -35,8 +35,8 @@ y = df[label_col].astype(str)
 label_encoder = LabelEncoder()
 y_encoded = label_encoder.fit_transform(y)
 
-# PCAによる意味ベクトル化（n_componentsは適宜調整可能）
-pca = PCA(n_components=12)
+# PCAによる意味ベクトル化
+pca = PCA(n_components=12)#今の特徴量最大値
 X_pca = pca.fit_transform(X_full)
 
 # 保存（任意）
