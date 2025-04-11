@@ -73,7 +73,7 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # 学習ループ
-for epoch in range(100000):
+for epoch in range(8100):
     model.train()
     optimizer.zero_grad()
     output = model(X_train)
@@ -82,8 +82,6 @@ for epoch in range(100000):
     optimizer.step()
     if epoch % 50 == 0:
         print(f"Epoch {epoch}: Loss = {loss.item():.4f}")
-
-    
 
 # 評価
 model.eval()
@@ -100,3 +98,50 @@ with torch.no_grad():
 
 # モデル保存
 torch.save(model.state_dict(), "tdc_response_model.pth")
+
+# 評価（ベクトル距離付き）
+model.eval()
+results = []
+
+# IDごとのPCA平均ベクトル作成
+df["correct_id_encoded"] = y_encoded
+df["pca_vector"] = list(X_pca)
+id_to_vec = df.groupby("correct_id_encoded")["pca_vector"].apply(lambda x: np.mean(np.stack(x), axis=0))
+
+# 類似度関数
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+# テスト全件について評価
+with torch.no_grad():
+    preds = model(X_test).argmax(dim=1)
+    acc = (preds == y_test).float().mean()
+    print(f"\nTest Accuracy: {acc:.2f}")
+
+    for i in range(len(y_test)):
+        true_id = y_test[i].item()
+        pred_id = preds[i].item()
+
+        # PCAベクトルを取得（安全に）
+        true_vec = id_to_vec.get(true_id)
+        pred_vec = id_to_vec.get(pred_id)
+
+        if true_vec is None or pred_vec is None:
+            continue
+
+        euclid_dist = np.linalg.norm(pred_vec - true_vec)
+        cos_sim = cosine_similarity(pred_vec, true_vec)
+
+        results.append({
+            "index": i,
+            "true_id": label_encoder.inverse_transform([true_id])[0],
+            "pred_id": label_encoder.inverse_transform([pred_id])[0],
+            "euclidean_distance": euclid_dist,
+            "cosine_similarity": cos_sim
+        })
+
+# CSV出力
+results_df = pd.DataFrame(results)
+results_df.to_csv("tdc_similarity_report.csv", index=False, encoding="utf-8-sig")
+
+print("✅ 意味的類似度レポートを保存しました：tdc_similarity_report.csv")
